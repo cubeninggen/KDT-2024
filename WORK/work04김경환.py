@@ -16,7 +16,7 @@ print(camille['movement_speed'])
 
 # 12-5
 player_key=input('key : ').split()
-player_value=input('value : ').split()
+player_value=list(map(float,input('value : ').split()))
 
 print(dict(zip(player_key,player_value)))
 
@@ -43,12 +43,13 @@ else:
 
 # 14-7
 grade=list(map(int,input('점수 입력 : ').split()))
-if 100<grade[0]>0 or 100<grade[1]>0 or 100<grade[2]>0 or 100<grade[3]>0:
-    print('잘못된 점수')
-elif sum(grade)/len(grade)>=80:
-    print('합격')
+if 100>=grade[0]>=0 and 100>=grade[1]>=0 and 100>=grade[2]>=0 and 100>=grade[3]>=0:
+    if sum(grade)/len(grade)>=80:
+        print('합격')
+    else:
+        print('불합격')
 else:
-    print('불합격')
+    ('잘못된 정수 입니다.')
 
 # 15-3
 x=int(input())
