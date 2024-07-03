@@ -14,4 +14,4 @@ for i in range(10,100):
     if i%10==0:
         print()
     else:
-        print(f'{i%10}*{i//10}={(i//10)*(i%10)}',end='|')
+        print(f'{i%10}*{i//10}={(i//10)*(i%10):^2}',end='|')
