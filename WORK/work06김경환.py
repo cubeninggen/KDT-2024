@@ -1,7 +1,6 @@
 # 중첩 for 구구단 일반 for로 줄이기
 for i in range(10,100):
-    if i%10==0:print()
-    else:print(f'{i%10}*{i//10}={(i//10)*(i%10):^2}',end='|')
+    print() if i%10==0 else print(f'{i%10}*{i//10}={(i//10)*(i%10):^2}',end='|')
 print()
 # 구구단 가로로 출력
 # 2~5단 줄바꾸고6~9단
@@ -14,6 +13,7 @@ for i in range(1,10):
     print()
     for j in range(6,10):
         print(f'{j}*{i}={j*i:^2}',end='|')
+print()
 
 # 17-5
 i=2
@@ -77,6 +77,10 @@ for i in range(num):
             print('*',end='')
     print()
 print()
+
+num=int(input().strip())
+for i in range(1,num+1):
+    print(' '*(num-1)+'*'*(2*i-1))
 
 # 20-7
 for i in range(1,101):
