@@ -21,6 +21,12 @@ class Bugger:
         print(f'번 종 류 : {self.bread}')
         print(f'패    티 : {self.patty}')
         print(f'야    체 : {self.veg}')
+
+    # 속성을 변경하거나 읽어오는 메서드 =>getter/setter 메서드
+    def get_bread(self):
+        return self.bread
+    def set_bread(self,bread):
+        self.bread=bread
 ## 객체 생성
 # 불고기 버거 객체생성
 bugger1=Bugger('브리오슈','불고기','양상치 양파 토마토','롯데리아')
@@ -28,5 +34,10 @@ bugger2=Bugger('참깨곡물빵','쇠고기패티','치즈 양상치 양파 토�
 
 # 버거 정보 확인
 bugger1.printInfo()
-print()
+# 속성 접근법 : 직접접근   간접접근
+print(bugger1.bread,bugger1.get_bread())
+# 속성 수정법 :    
+bugger1.bread='들깨빵'  #직접수정
+bugger1.set_bread('올리브빵') #간접수정
 bugger2.printInfo()
+
