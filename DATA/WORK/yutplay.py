@@ -18,12 +18,13 @@ def yut_play():
         return 5
 point=[0,0]
 HorN=0
-while point[0]<20 or point[1]<20:
-        if point[HorN]==20:
-            break
-        else:
-            point[HorN]+=yut_play()
-            if yut_play()==4 or yut_play()==5:
+while True:
+    while point[0]<20 or point[1]<20:
+            if point[HorN]==20:
                 break
-        HorN=1-HorN
+            else:
+                point[HorN]+=yut_play()
+                if yut_play()==4 or yut_play()==5:
+                    break
+            HorN=1-HorN
 print(point[0],point[1])
