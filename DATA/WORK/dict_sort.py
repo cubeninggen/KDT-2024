@@ -31,9 +31,20 @@ def main():
                 print(f'[{_}] {i[0]:<15}: {i[1][2]:>10,}')
                 _+=1
         elif menu_num==4:
-            print(None)
+            city=input('출력할 도시 이름을 입력하세요: ')
+            if city in contry_list.keys():
+                print(f'도시:{city}')
+                print(f'국가:{contry_list[city][0]}, 대륙:{contry_list[city][1]}, 인구수:{contry_list[city][2]}')
+            else:
+                print(f'도시이름: {city}은 key에 없습니다.')
         elif menu_num==5:
-            print(None)
+            continent_name = input('대륙 이름을 입력하세요(Asia, Europe, America): ')
+            total_population = 0
+            for city, info in contry_list.items():
+                if info[1] == continent_name:
+                    print(f'{city}: {info[2]:,}')
+                    total_population += info[2]
+            print(f'{continent_name} 전체 인구수: {total_population:,}')
         elif menu_num==6:
             print('프로그램을 종료합니다.')
             break
