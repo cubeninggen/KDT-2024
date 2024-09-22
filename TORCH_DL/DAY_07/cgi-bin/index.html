@@ -3,9 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Prediction Form</title>
 </head>
-<body bgcolor="skyblue">
-    hello world!
+<body>
+    <h1>Prediction Form</h1>
+    <form id="predictForm">
+        <label>Gamemode: <input type="text" id="gamemode" required></label><br>
+        <label>Mapname: <input type="text" id="mapname" required></label><br>
+        <label>Objectivelocation: <input type="text" id="objectivelocation" required></label><br>
+        <label>Clearancelevel: <input type="number" id="clearancelevel" required></label><br>
+        <label>Skillrank: <input type="text" id="skillrank" required></label><br>
+        <label>Role: <input type="text" id="role" required></label><br>
+        <button type="button" onclick="sendPrediction()">Predict</button>
+    </form>
+
+    <p id="result"></p>
+
+    <script>
+        function sendPrediction() {
+            const gamemode = document.getElementById('gamemode').value;
+            const mapname = document.getElementById('mapname').value;
+            const objectivelocation = document.getElementById('objectivelocation').value;
+            const clearancelevel = document.getElementById('clearancelevel').value;
+            const skillrank = document.getElementById('skillrank').value;
+            const role = document.getElementById('role').value;
+
+            // 입력값을 배열로 만들기 (모델 입력으로)
+            const features = [parseFloat(gamemode), parseFloat(mapname), parseFloat(objectivelocation), 
+                              parseFloat(clearancelevel), parseFloat(skillrank), parseFloat(role)];
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({features: features}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = `Prediction: ${data.prediction}`;
+            })
+            .catch(error => {
+                document.getElementById('result').innerText = 'Error: ' + error;
+            });
+        }
+    </script>
 </body>
 </html>

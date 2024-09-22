@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <title>RAINBOWSIX SIEGE | 승률 예측</title>
+
+    <meta property="og:title" content="레인보우 식스 시즈 승률 예측" />
+    <meta property="og:description" content="레인보우식스 시즈 승률 예측 모델 구동 사이트" />
+    <meta property="og:image" content="https://www.kemperlesnik.com/wp-content/uploads/2020/05/rainbow-six-siege-logo-header.-1.jpg" />
+
+    <style>
+        .layout {
+            background-color: #ffffffa6;
+            color: black;
+            text-align: center;
+        }
+
+        .video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            overflow: hidden;
+            margin: 0 auto;
+            transform: translateX(-50%) translateY(-50%);
+        }
+
+        .mybox {
+            width: 95%;
+            max-width: 700px;
+            padding: 20px;
+            box-shadow: 0px 0px 10px 0px lightblue;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <video class="video" src="https://staticctf.ubisoft.com/J3yJr34U2pZ2Ieem48Dwy9uqj5PNUQTn/4GJ98jq8CtE4GFjtWb6G27/87b1545a8a0efc5afa78d74a2802600e/r6s-y9s3-homepage.mp4" muted="muted" loop="loop"
+            playsinline="" autoplay="autoplay"></video>
+        <h1><img src="https://staticctf.ubisoft.com/J3yJr34U2pZ2Ieem48Dwy9uqj5PNUQTn/DAwqy5hMljnxm7evA5ASN/e3266cda0a738a3abd486d5f57d732d7/r6s-logo-ww.png" />
+        </h1>
+        <h2>레인보우식스 시즈 승률 예측 모델 구동 사이트</h2>
+        <hr>
+        <div>
+            <span style="color:rgb(86, 86, 86)">공식사이트<br>
+                <a href="https://www.ubisoft.com/en-gb/game/rainbow-six/siege"> 레인보우식스 시즈</a>
+                <a href="https://store.steampowered.com/app/359550/Tom_Clancys_Rainbow_Six_Siege/">레인보우식스 시즈 스팀 구매 페이지</a>
+                <a href="https://x.com/rainbow6game"> 레인보우식스 시즈 공식X</a>
+                <br>
+                유용한사이트
+                <br>
+                <a href="https://r6.tracker.network//"> 레인보우식스 전적사이트</a>
+        </div>
+        <hr>
+        <div class="mybox">
+            <h1>레인보우식스 시즈 승률 예측</h1>
+    <form id="predict-form">
+        <label for="features">입력 피쳐 (쉼표로 구분):</label>
+        <input type="text" id="features" name="features" required placeholder="예: 1,2,3,4,5,6">
+        <button type="submit">예측하기</button>
+    </form>
+    <div id="result"></div>
+        </div>
+    </div>
+
+    <div class="layout">
+        <img src="https://lh3.googleusercontent.com/proxy/coZqYVXX4fM06Sf1ETzI_JUtYLIDR_-Z0y7boAyZPTPGK0ZNuCnEVh-w72Z2PjpczI69kOK-z2ONIK_v6UUOYX7y_bxzpx489J5bKTGc2oK5fLfvPvbbqIdIMX5wAodjnnP8Lp4EneAjS1omBO4ewO0h_fMrt3avUbtoyhQ-AEvv7wgQ8-4zSpXhHpmmhJxcXloPOk2FA3256t3zur7aGPgr41nBVA" />
+    </div>
+    <script>
+        document.getElementById('predict-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const features = document.getElementById('features').value.split(',').map(Number);
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ features: features })
+            });
+            const result = await response.json();
+            document.getElementById('result').innerText = result.error ? result.error : `예측 결과: ${result.prediction}`;
+        });
+    </script>
+</body>
+
+</html>
