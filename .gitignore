@@ -8,3 +8,4 @@ TORCH_IMAGE/data/MNIST/raw/train-images-idx3-ubyte
 TORCH_IMAGE/data/MNIST/raw/train-images-idx3-ubyte.gz
 TORCH_IMAGE/data/MNIST/raw/train-labels-idx1-ubyte
 TORCH_IMAGE/data/MNIST/raw/train-labels-idx1-ubyte.gz
+TORCH_IMAGE/data/cifar-10-python.tar.gz
