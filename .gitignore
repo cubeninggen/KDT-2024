@@ -9,3 +9,11 @@ TORCH_IMAGE/data/MNIST/raw/train-images-idx3-ubyte.gz
 TORCH_IMAGE/data/MNIST/raw/train-labels-idx1-ubyte
 TORCH_IMAGE/data/MNIST/raw/train-labels-idx1-ubyte.gz
 TORCH_IMAGE/data/cifar-10-python.tar.gz
+TORCH_IMAGE/data/cifar-10-batches-py/batches.meta
+TORCH_IMAGE/data/cifar-10-batches-py/data_batch_1
+TORCH_IMAGE/data/cifar-10-batches-py/data_batch_2
+TORCH_IMAGE/data/cifar-10-batches-py/data_batch_3
+TORCH_IMAGE/data/cifar-10-batches-py/data_batch_4
+TORCH_IMAGE/data/cifar-10-batches-py/data_batch_5
+TORCH_IMAGE/data/cifar-10-batches-py/readme.html
+TORCH_IMAGE/data/cifar-10-batches-py/test_batch
