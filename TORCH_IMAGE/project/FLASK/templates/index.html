@@ -6,19 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
-        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
-    <title>RAINBOWSIX SIEGE | 승률 예측</title>
-
-    <meta property="og:title" content="레인보우 식스 시즈 승률 예측" />
-    <meta property="og:description" content="레인보우식스 시즈 승률 예측 모델 구동 사이트" />
-    <meta property="og:image" content="https://www.kemperlesnik.com/wp-content/uploads/2020/05/rainbow-six-siege-logo-header.-1.jpg" />
+    <title>오버워치 영웅 예측</title>
 
     <style>
         .layout {
@@ -52,28 +45,26 @@
 
 <body>
     <div class="layout">
-        <video class="video" src="https://staticctf.ubisoft.com/J3yJr34U2pZ2Ieem48Dwy9uqj5PNUQTn/4GJ98jq8CtE4GFjtWb6G27/87b1545a8a0efc5afa78d74a2802600e/r6s-y9s3-homepage.mp4" muted="muted" loop="loop"
-            playsinline="" autoplay="autoplay"></video>
-        <h1><img src="https://staticctf.ubisoft.com/J3yJr34U2pZ2Ieem48Dwy9uqj5PNUQTn/DAwqy5hMljnxm7evA5ASN/e3266cda0a738a3abd486d5f57d732d7/r6s-logo-ww.png" />
-        </h1>
-        <h2>레인보우식스 시즈 승률 예측 모델 구동 사이트</h2>
+        <video class="video" src="https://blz-contentstack-assets.akamaized.net/v3/assets/blt2477dcaf4ebd440c/blt2034b940dd314c20/6509d6e64bca9ea249873c5a/F2P_Trailer.mp4" muted="muted" loop="loop" playsinline="" autoplay="autoplay"></video>
+        <h1><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTVMXEwzAQnkEcl5t4BdJxX7saRaAKEa6HZ1Q&s" /></h1>
+        <h2>오버워치 영웅 예측 사이트</h2>
         <hr>
         <div>
             <span style="color:rgb(86, 86, 86)">공식사이트<br>
-                <a href="https://www.ubisoft.com/en-gb/game/rainbow-six/siege"> 레인보우식스 시즈</a>
-                <a href="https://store.steampowered.com/app/359550/Tom_Clancys_Rainbow_Six_Siege/">레인보우식스 시즈 스팀 구매 페이지</a>
-                <a href="https://x.com/rainbow6game"> 레인보우식스 시즈 공식X</a>
+                <a href="https://overwatch.blizzard.com/ko-kr/">오버워치</a>
+                <a href="https://www.youtube.com/@OverwatchKR">오버워치 공식유튜브</a>
+                <a href="https://x.com/OverwatchKR">오버워치 공식X</a>
                 <br>
                 유용한사이트
                 <br>
-                <a href="https://r6.tracker.network//"> 레인보우식스 전적사이트</a>
+                <a href="https://overwatch.op.gg/"> 오버워치 전적사이트</a>
         </div>
         <hr>
         <div class="mybox">
-            <h1>Upload an image for CIFAR-10 prediction</h1>
+            <h1>예측할 영웅</h1>
             <input type="file" id="fileInput">
-            <button onclick="uploadImage()">Upload and Predict</button>
-            <p id="prediction">Prediction will appear here...</p>
+            <button onclick="uploadImage()">예측하기</button>
+            <p id="prediction">결과값 출력창</p>
 
             <script>
                 async function uploadImage() {
@@ -83,16 +74,22 @@
                     formData.append('file', file);
 
                     // Flask 서버의 /predict 경로로 POST 요청
-                    const response = await fetch('http://localhost:5000/predict', {  // 서버 URL 명시
+                    const response = await fetch('http://localhost:5000/predict', {
                         method: 'POST',
                         body: formData
                     });
 
                     const result = await response.json();
-                    document.getElementById('prediction').innerText = `Predicted Class: ${result.class_name}`;
+                    document.getElementById('prediction').innerText = `Predicted Character: ${result.character_name}`;
                 }
             </script>
         </div>
+        <div>
+            <hr>
+            <h1>오버워치 2 x 나의 히어로 아카데미아 콜라보레이션</h1>
+            <a href="https://overwatch.blizzard.com/ko-kr/news/24142481/%EC%98%A4%EB%B2%84%EC%9B%8C%EC%B9%98-2-x-%EB%82%98%EC%9D%98-%ED%9E%88%EC%96%B4%EB%A1%9C-%EC%95%84%EC%B9%B4%EB%8D%B0%EB%AF%B8%EC%95%84-%EC%BD%9C%EB%9D%BC%EB%B3%B4%EB%A0%88%EC%9D%B4%EC%85%98/" target="_blank">
+            <img src="https://bnetcmsus-a.akamaihd.net/cms/blog_header/kj/KJMNBPHQDYIF1727380861398.png">
+            </a>
     </div>
 </body>
 
