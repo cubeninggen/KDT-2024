@@ -75,6 +75,7 @@
             margin: 0;
             padding: 20px;
         }
+
         .container {
             max-width: 600px;
             margin: auto;
@@ -83,9 +84,11 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             text-align: center;
         }
+
         input[type="text"] {
             width: 100%;
             padding: 10px;
@@ -93,6 +96,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
         input[type="submit"] {
             background-color: #4CAF50;
             color: white;
@@ -102,12 +106,14 @@
             cursor: pointer;
             width: 100%;
         }
+
         input[type="submit"]:hover {
             background-color: #45a049;
         }
+
         .result {
             margin-top: 20px;
-            font-size: 18px;
+            font-size: 60px;
             text-align: center;
         }
     </style>
@@ -143,7 +149,9 @@
                 <input type="submit" value="예측하기">
             </form>
             {% if prediction %}
-                <div class="result">{{ prediction }}</div>
+            <div class="result">
+                예측 결과: {{ prediction }}
+            </div>
             {% endif %}
         </div>
 
