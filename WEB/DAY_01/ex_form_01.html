@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form 태그</title>
+    <style>
+        .layout {
+            background-color: #ffffffa6;
+            color: black;
+            text-align: center;
+        }
+
+        .video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            overflow: hidden;
+            margin: 0 auto;
+            transform: translateX(-50%) translateY(-50%);
+        }
+    </style>
+</head>
+
+<body>
+    <dvi class="layout">
+        <a class="video">
+            <img
+                src="https://static-cse.canva.com/blob/1145215/1.magebyRodionKutsaevviaUnsplash.9634f837.avif">
+        </a>
+        <h1>사용자 입력 Form태그</h1>
+        <hr>
+        <form>
+            택스트 <input type="text" name="msg" value="0"><br>
+            비밀번호 <input type="password" name="pass" value="0"><br>
+            전화번호 <input type="tel" name="phone" value="0"><br>
+            숫자데이터 <input type="number" name="nums" value="0"><br>
+            웝URL <input type="url" name="url" value="0"><br>
+            이매일 <input type="email" name="email" value="0"><br>
+            <input type="submit" value="전송">
+        </form>
+        <form>
+            <hr>
+            <strong>사용 가능한 언어</strong>
+            <hr>
+            Python <input type="checkbox" name="pyhton"><br>
+            HTML <input type="checkbox" name="html"><br>
+            My-SQL <input type="checkbox" name="my-sql">
+            <hr>
+            <strong>성별</strong>
+            <hr>
+            남 <input type="radio" name="gender" value="M"><br>
+            여 <input type="radio" name="gender" value="F">
+            <hr>
+            <strong>연령</strong>
+            <hr>
+            10대 <input type="radio" name="age" value="10"><br>
+            20대 <input type="radio" name="age" value="20"><br>
+            30대 <input type="radio" name="age" value="30"><br>
+            40대 <input type="radio" name="age" value="40"><br>
+            50대 <input type="radio" name="age" value="50"><br>
+            60대 <input type="radio" name="age" value="60"><br>
+            70대 <input type="radio" name="age" value="70"><br>
+            80대 <input type="radio" name="age" value="80"><br>
+            90대 <input type="radio" name="age" value="90"><br>
+            <input type="button" name="okbtn" value="OK"><br>
+            <input type="submit" value="전송">
+        </form>
+    </dvi>
+</body>
+
+</html>
