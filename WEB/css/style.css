@@ -1,0 +1,20 @@
+.layout {
+    background-color: rgba(77, 77, 77, 0.471);
+    color: white;
+    text-align: center;
+}
+
+.a {
+    background-color: aqua;
+    color: yellow;
+}
+
+#b {
+    background-color: magenta;
+    color: aqua;
+}
+
+.c {
+    background-color: yellow;
+    color: magenta;
+}
