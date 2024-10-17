@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/yorha.css"/>
+    <title>CSS & Tag</title>
+    <style>
+        .full { width: 100% }
+        *{text-align: center;}
+        html{height: 100%;}
+        body{
+            height: 100vh;
+            width: 100vw;
+        }
+        #header, header{
+            background-color: rgb(145, 139, 119);
+            height: 7vh;
+        }
+        #menu, nav{
+            background-color: rgb(255, 254, 225);
+            height: 3vh;
+        }
+        #center, section{
+            display: inline-block;
+            width: 100vw;
+            height: 90vh;
+        }
+        button{
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <header><h1>내가 만든 결과물 사이트</h1></header>
+    <nav>
+        <a href="predict_iris_temp" target="html"><button>DL</button></a>
+        <a href="predict_image_temp" target="html"><button>IMG</button></a>
+        <a href="predict_comment_temp" target="html"><button>NLP</button></a>
+    </nav>
+    <section>
+        <iframe name="html" width="100%" height="100%"></iframe>
+    </section>
+</body>
+</html>
