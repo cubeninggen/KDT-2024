@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{url_for('static',filename='css/yorha.css')}}" />
+    <title>Detail</title>
+</head>
+
+<body>
+    <h1>{{question.subject}}</h1>
+    {{question.create_date}}
+    <hr>
+    <div>
+        {{question.content}}
+    </div>
+    <hr>
+    <h5>{{ question.answer_set|length }}개의 답변이 있습니다.</h5>
+    <div>
+        <ul>
+            {% for answer in question.answer_set %}
+            <li>{{ answer.content }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div>
+        <form action="{{ url_for('answer.create', question_id=question.id) }}" method="post">
+            <textarea rows="5" cols="50" placeholder="답글입력" name="content"></textarea>
+            <input type="submit" value="답변등록">
+        </form>
+    </div>
+</body>
+
+</html>
