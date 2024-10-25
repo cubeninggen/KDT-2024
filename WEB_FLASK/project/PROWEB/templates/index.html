@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MY WEB</title>
+    <link rel="stylesheet" type="text/css" href="{{url_for('static',filename='css/yorha.css')}}">
+    <style>
+        body {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>날씨를 입력하세요</h1>
+    <form method="post">
+        <table align="center">
+            <tr>
+                <td>습도</td>
+                <td><input type="text" name="hum"></td>
+            </tr>
+            <tr>
+                <td>강수량</td>
+                <td><input type="text" name="rain"></td>
+            </tr>
+            <tr>
+                <td>기온</td>
+                <td><input type="text" name="tem"></td>
+            </tr>
+            <tr>
+                <td>풍속</td>
+                <td><input type="text" name="wind"></td>
+            </tr>
+        </table> 
+        <input type="submit" values="입력">   
+    </form>
+</body>
+</html>

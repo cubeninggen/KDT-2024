@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MY WEB</title>
+    <link rel="stylesheet" type="text/css" href="{{url_for('static',filename='css/yorha.css')}}">
+    <style>
+        body {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>한식을 주문할 확률은</h1>
+    <h2>{{result1}}</h2>
+    <h1>패스트푸드를 주문할 확률은</h1>
+    <h2>{{result2}}</h2>
+    <h1>글로벌 음식을 주문할 확률은</h1>
+    <h2>{{result3}}</h2>
+    <a href="/">다시검사하기</a>
+</body>
+</html>

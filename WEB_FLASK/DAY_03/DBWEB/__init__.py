@@ -4,7 +4,7 @@
 #-----------------------------------------------------------------------------
 # 모듈로딩
 from flask import Flask
-import config
+#import WEB_FLASK.project.config as config
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -19,7 +19,7 @@ def create_app():
     APP=Flask(__name__)
 
     # DB 관련 초기화 설정
-    APP.config.from_object(config)
+    #APP.config.from_object(config)
 
     # DB 초기화 및 연동
     DB.init_app(APP)
