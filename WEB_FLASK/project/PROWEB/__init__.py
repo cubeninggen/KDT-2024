@@ -5,6 +5,7 @@ from flask import Flask
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from PROWEB.models.models import IrisRegModel
 
 # DB 관련 설정
 #import config
@@ -36,7 +37,7 @@ def create_app():
 
     # URL 처리 모듈 등록
     from .views import main_view
-
+    IrisRegModel=IrisRegModel()
 
     APP.register_blueprint(main_view.mainBP)
 

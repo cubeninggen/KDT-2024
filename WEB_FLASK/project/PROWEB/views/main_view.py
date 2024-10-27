@@ -8,7 +8,7 @@ from flask import Blueprint,render_template,url_for,request
 from werkzeug.utils import redirect
 import torch
 import torch.nn as nn
-from PROWEB.models.models import IrisRegModel
+from __init__ import IrisRegModel
 from PROWEB.models.models import SoftmaxClassifier
 import REGutils
 import models
@@ -67,7 +67,7 @@ mainBP=Blueprint('main',
                  template_folder='templates')
 
 model1=torch.load('PROWEB/models/best_model1.pth',weights_only=False)
-#model2=torch.load('PROWEB/models/best_model2.pth',weights_only=False)
+model2=torch.load('PROWEB/models/best_model2.pth',weights_only=False)
 #model3=torch.load('PROWEB/models/best_model3.pth',weights_only=False)
 
 # http://localhost:5000/ URL처리 라우팅 함수 정의

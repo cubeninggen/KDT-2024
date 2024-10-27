@@ -25,6 +25,8 @@ def create_app():
     DB.init_app(APP)
     MIGRATE.init_app(APP,DB)
 
+  
+
     # DB 클레스 정의 모듈 로딩
     from .models import models
 
