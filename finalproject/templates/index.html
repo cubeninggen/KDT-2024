@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Labeling Tool</title>
+    <style>
+        .canvas-container {
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Labeling Tool</h1>
+    <form id="upload-form">
+        <input type="file" id="image-upload" name="images" accept="image/*" multiple>
+        <button type="submit">Upload</button>
+    </form>
+    <div id="canvas-list"></div>
+    <button id="save-all">Save All</button>
+
+    <script>
+        const canvasList = document.getElementById('canvas-list');
+        const uploadForm = document.getElementById('upload-form');
+        const saveAllButton = document.getElementById('save-all');
+
+        let labelData = {};
+        let editingMode = {}; // 편집 모드 관리
+
+        // 이미지 업로드
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('image-upload');
+            const formData = new FormData();
+            const files = fileInput.files;
+
+            for (let file of files) {
+                formData.append('images', file);
+            }
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            if (data.filepaths) {
+                data.filepaths.forEach(filepath => {
+                    addCanvas(filepath);
+                    labelData[filepath] = [];
+                    editingMode[filepath] = false;
+                });
+            }
+        });
+
+        // 캔버스 추가
+        function addCanvas(filepath) {
+            const container = document.createElement('div');
+            container.className = 'canvas-container';
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const saveButton = document.createElement('button');
+            saveButton.textContent = 'Save';
+            saveButton.onclick = () => saveCanvas(filepath);
+
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.onclick = () => toggleEdit(filepath, canvas);
+
+            const resetButton = document.createElement('button');
+            resetButton.textContent = 'Reset';
+            resetButton.onclick = () => resetCanvas(filepath, canvas);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.onclick = () => deleteCanvas(filepath, container);
+
+            const img = new Image();
+            img.src = `/${filepath}`;
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+
+            let points = [];
+            canvas.addEventListener('click', (e) => {
+                if (!editingMode[filepath]) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                points.push([x, y]);
+
+                if (points.length === 2) {
+                    const [p1, p2] = points;
+                    const x1 = Math.min(p1[0], p2[0]);
+                    const y1 = Math.min(p1[1], p2[1]);
+                    const x2 = Math.max(p1[0], p2[0]);
+                    const y2 = Math.max(p1[1], p2[1]);
+
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                    labelData[filepath].push([x1, y1, x2, y2]);
+                    points = [];
+                }
+            });
+
+            container.appendChild(canvas);
+            container.appendChild(editButton);
+            container.appendChild(resetButton);
+            container.appendChild(deleteButton);
+            container.appendChild(saveButton);
+            canvasList.appendChild(container);
+        }
+
+        // 편집 모드 토글
+        function toggleEdit(filepath, canvas) {
+            editingMode[filepath] = !editingMode[filepath];
+            alert(editingMode[filepath] ? 'Editing Enabled' : 'Editing Disabled');
+        }
+
+        // 초기화
+        function resetCanvas(filepath, canvas) {
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.src = `/${filepath}`;
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            labelData[filepath] = [];
+        }
+
+        // 캔버스 삭제
+        function deleteCanvas(filepath, container) {
+            delete labelData[filepath];
+            container.remove();
+        }
+
+        // 개별 저장
+        async function saveCanvas(filepath) {
+            const response = await fetch('/save_label', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filepath,
+                    rectangles: labelData[filepath],
+                }),
+            });
+
+            const data = await response.json();
+            alert(data.message || data.error);
+        }
+
+        // 전체 저장
+        saveAllButton.addEventListener('click', async () => {
+            const response = await fetch('/save_all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    all_label_data: labelData,
+                }),
+            });
+
+            const data = await response.json();
+            alert(data.message || data.error);
+        });
+    </script>
+</body>
+</html>
