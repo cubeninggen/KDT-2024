@@ -1,185 +1,410 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Labeling Tool</title>
+    <title>YOLO Object Detection and Labeling</title>
     <style>
         .canvas-container {
-            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
         }
-        canvas {
-            border: 1px solid black;
-            display: block;
+        #labelCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        .tool-panel {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: #f5f5f5;
+        }
+        .bbox-list {
+            margin: 20px 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .bbox-item {
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ddd;
+            background: #fff;
+        }
+        .image-preview {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .delete-btn {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .image-container {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        .training-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .training-btn:hover {
+            background-color: #45a049;
+        }
+        .training-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <h1>Image Labeling Tool</h1>
-    <form id="upload-form">
-        <input type="file" id="image-upload" name="images" accept="image/*" multiple>
-        <button type="submit">Upload</button>
+    <h1>Object Detection and Manual Labeling</h1>
+    <form id="uploadForm">
+        <input type="file" name="images" accept="image/*" multiple>
+        <button type="submit">Upload and Detect</button>
     </form>
-    <div id="canvas-list"></div>
-    <button id="save-all">Save All</button>
+
+    <div id="imagesList">
+        <!-- 업로드된 이미지들이 여기에 표시됩니다 -->
+    </div>
+
+    <div id="results">
+        <!-- 선택된 이미지의 결과가 여기에 표시됩니다 -->
+    </div>
+
+    <div class="tool-panel">
+        <h3>Labeling Tools</h3>
+        <input type="text" id="classSelect">
+        <button id="saveLabels">Save Labels</button>
+        <button id="undoLabel">Undo Last Label</button>
+    </div>
+
+    <div class="bbox-list" id="bboxList">
+        <h3>Bounding Boxes:</h3>
+        <!-- 바운딩 박스 목록이 여기에 표시됩니다 -->
+    </div>
+
+    <div class="tool-panel">
+        <h3>Training Tools</h3>
+        <button id="startTraining" class="training-btn">Start Training</button>
+        <div id="trainingStatus" class="status"></div>
+    </div>
 
     <script>
-        const canvasList = document.getElementById('canvas-list');
-        const uploadForm = document.getElementById('upload-form');
-        const saveAllButton = document.getElementById('save-all');
+        let currentImage = null;
+        let drawing = false;
+        let startX, startY;
+        let bboxes = {};  // 이미지별 바운딩 박스 저장
+        let canvas, ctx;
+        let uploadedImages = [];
 
-        let labelData = {};
-        let editingMode = {}; // 편집 모드 관리
-
-        // 이미지 업로드
-        uploadForm.addEventListener('submit', async (e) => {
+        document.getElementById('uploadForm').onsubmit = async (e) => {
             e.preventDefault();
-            const fileInput = document.getElementById('image-upload');
-            const formData = new FormData();
-            const files = fileInput.files;
+            const formData = new FormData(e.target);
+            const imageFiles = e.target.elements.images.files;
+            
+            for (let file of imageFiles) {
+                try {
+                    const individualFormData = new FormData();
+                    individualFormData.append('image', file);
+                    
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: individualFormData
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(`Error processing ${file.name}: ${data.error}`);
+                        continue;
+                    }
 
-            for (let file of files) {
-                formData.append('images', file);
+                    uploadedImages.push({
+                        name: file.name,
+                        originalPath: data.original_image,
+                        resultPath: data.result_image,
+                        jsonPath: data.json_file
+                    });
+
+                    bboxes[file.name] = [];
+                    updateImagesList();
+                    
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                    alert(`Error processing ${file.name}`);
+                }
             }
+        };
 
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData,
+        function updateImagesList() {
+            const listDiv = document.getElementById('imagesList');
+            listDiv.innerHTML = '<h2>Uploaded Images:</h2>';
+            
+            uploadedImages.forEach((img, index) => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-container';
+                imgContainer.innerHTML = `
+                    <div>
+                        <span>${img.name}</span>
+                        <button onclick="showImage(${index})">Show/Edit</button>
+                        <span class="delete-btn" onclick="deleteImage(${index})">×</span>
+                    </div>
+                `;
+                listDiv.appendChild(imgContainer);
             });
-            const data = await response.json();
+        }
 
-            if (data.filepaths) {
-                data.filepaths.forEach(filepath => {
-                    addCanvas(filepath);
-                    labelData[filepath] = [];
-                    editingMode[filepath] = false;
+        function showImage(index) {
+            const img = uploadedImages[index];
+            currentImage = img.name;
+            
+            document.getElementById('results').innerHTML = `
+                <div id="originalImage">
+                    <img src="${img.originalPath}" style="max-width:1000px">
+                    <h3>[Original Image]</h3>
+                </div>
+                <div id="detectedImage" class="canvas-container">
+                    <img src="${img.resultPath}" style="max-width:1000px">
+                    <h3>[Detected Objects]</h3>
+                </div>
+            `;
+
+            const resultImg = document.querySelector('#detectedImage img');
+            resultImg.onload = () => {
+                if (canvas) {
+                    canvas.remove();
+                }
+                initCanvas(resultImg);
+                if (bboxes[currentImage]) {
+                    drawAllBBoxes();
+                }
+            };
+        }
+
+        function deleteImage(index) {
+            if (confirm('이미지를 삭제하시겠습니까?')) {
+                const imageToDelete = uploadedImages[index];
+                fetch('/delete_image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filename: imageToDelete.name
+                    })
+                }).then(() => {
+                    uploadedImages.splice(index, 1);
+                    delete bboxes[imageToDelete.name];
+                    updateImagesList();
+                    if (currentImage === imageToDelete.name) {
+                        document.getElementById('results').innerHTML = '';
+                    }
+                }).catch(error => {
+                    console.error('Error deleting image:', error);
+                    alert('Error deleting image');
                 });
             }
-        });
+        }
 
-        // 캔버스 추가
-        function addCanvas(filepath) {
-            const container = document.createElement('div');
-            container.className = 'canvas-container';
-
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            const saveButton = document.createElement('button');
-            saveButton.textContent = 'Save';
-            saveButton.onclick = () => saveCanvas(filepath);
-
-            const editButton = document.createElement('button');
-            editButton.textContent = 'Edit';
-            editButton.onclick = () => toggleEdit(filepath, canvas);
-
-            const resetButton = document.createElement('button');
-            resetButton.textContent = 'Reset';
-            resetButton.onclick = () => resetCanvas(filepath, canvas);
-
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'Delete';
-            deleteButton.onclick = () => deleteCanvas(filepath, container);
-
-            const img = new Image();
-            img.src = `/${filepath}`;
-            img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-            };
-
-            let points = [];
-            canvas.addEventListener('click', (e) => {
-                if (!editingMode[filepath]) return;
-
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                points.push([x, y]);
-
-                if (points.length === 2) {
-                    const [p1, p2] = points;
-                    const x1 = Math.min(p1[0], p2[0]);
-                    const y1 = Math.min(p1[1], p2[1]);
-                    const x2 = Math.max(p1[0], p2[0]);
-                    const y2 = Math.max(p1[1], p2[1]);
-
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-                    labelData[filepath].push([x1, y1, x2, y2]);
-                    points = [];
-                }
-            });
-
+        function initCanvas(imgElement) {
+            const container = document.querySelector('.canvas-container');
+            canvas = document.createElement('canvas');
+            canvas.id = 'labelCanvas';
+            canvas.width = imgElement.width;
+            canvas.height = imgElement.height;
             container.appendChild(canvas);
-            container.appendChild(editButton);
-            container.appendChild(resetButton);
-            container.appendChild(deleteButton);
-            container.appendChild(saveButton);
-            canvasList.appendChild(container);
+            ctx = canvas.getContext('2d');
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDrawing);
         }
 
-        // 편집 모드 토글
-        function toggleEdit(filepath, canvas) {
-            editingMode[filepath] = !editingMode[filepath];
-            alert(editingMode[filepath] ? 'Editing Enabled' : 'Editing Disabled');
+        function startDrawing(e) {
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
         }
 
-        // 초기화
-        function resetCanvas(filepath, canvas) {
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            img.src = `/${filepath}`;
-            img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-            };
-            labelData[filepath] = [];
+        function draw(e) {
+            if (!drawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawAllBBoxes();
+            
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                startX,
+                startY,
+                currentX - startX,
+                currentY - startY
+            );
         }
 
-        // 캔버스 삭제
-        function deleteCanvas(filepath, container) {
-            delete labelData[filepath];
-            container.remove();
+        function endDrawing(e) {
+            if (!drawing) return;
+            drawing = false;
+
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+
+            if (Math.abs(endX - startX) > 5 && Math.abs(endY - startY) > 5) {
+                const classLabel = document.getElementById('classSelect').value;
+                const bbox = {
+                    x: Math.min(startX, endX),
+                    y: Math.min(startY, endY),
+                    width: Math.abs(endX - startX),
+                    height: Math.abs(endY - startY),
+                    class: classLabel
+                };
+                
+                if (!bboxes[currentImage]) {
+                    bboxes[currentImage] = [];
+                }
+                bboxes[currentImage].push(bbox);
+                updateBBoxList();
+                drawAllBBoxes();
+            }
         }
 
-        // 개별 저장
-        async function saveCanvas(filepath) {
-            const response = await fetch('/save_label', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filepath,
-                    rectangles: labelData[filepath],
-                }),
-            });
-
-            const data = await response.json();
-            alert(data.message || data.error);
+        function drawAllBBoxes() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (currentImage && bboxes[currentImage]) {
+                bboxes[currentImage].forEach(bbox => {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bbox.x, bbox.y, bbox.width, bbox.height);
+                    
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(bbox.class, bbox.x, bbox.y - 5);
+                });
+            }
         }
 
-        // 전체 저장
-        saveAllButton.addEventListener('click', async () => {
-            const response = await fetch('/save_all', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    all_label_data: labelData,
-                }),
-            });
+        function updateBBoxList() {
+            const list = document.getElementById('bboxList');
+            list.innerHTML = '<h3>Bounding Boxes:</h3>';
+            if (currentImage && bboxes[currentImage]) {
+                bboxes[currentImage].forEach((bbox, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bbox-item';
+                    item.innerHTML = `
+                        Box ${index + 1}: ${bbox.class}
+                        (x: ${Math.round(bbox.x)}, y: ${Math.round(bbox.y)},
+                        w: ${Math.round(bbox.width)}, h: ${Math.round(bbox.height)})
+                        <button onclick="deleteBBox(${index})">Delete</button>
+                    `;
+                    list.appendChild(item);
+                });
+            }
+        }
 
-            const data = await response.json();
-            alert(data.message || data.error);
-        });
+        function deleteBBox(index) {
+            if (currentImage && bboxes[currentImage]) {
+                bboxes[currentImage].splice(index, 1);
+                updateBBoxList();
+                drawAllBBoxes();
+            }
+        }
+
+        document.getElementById('undoLabel').onclick = function() {
+            if (currentImage && bboxes[currentImage] && bboxes[currentImage].length > 0) {
+                bboxes[currentImage].pop();
+                updateBBoxList();
+                drawAllBBoxes();
+            }
+        };
+
+        document.getElementById('saveLabels').onclick = async function() {
+            if (!currentImage) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const normalizedBBoxes = bboxes[currentImage].map(bbox => ({
+                x_center: (bbox.x + bbox.width/2) / canvas.width,
+                y_center: (bbox.y + bbox.height/2) / canvas.height,
+                width: bbox.width / canvas.width,
+                height: bbox.height / canvas.height,
+                class: bbox.class
+            }));
+
+            try {
+                const response = await fetch('/save_labels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        bboxes: normalizedBBoxes,
+                        image_name: currentImage
+                    })
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error('Error saving labels:', error);
+                alert('Error saving labels');
+            }
+        };
+
+        document.getElementById('startTraining').onclick = async function() {
+            if (!currentImage) {
+                alert('Please upload and label an image first');
+                return;
+            }
+
+            const button = this;
+            const statusDiv = document.getElementById('trainingStatus');
+            
+            try {
+                button.disabled = true;
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = 'Training in progress... This may take several minutes.';
+                
+                const response = await fetch('/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        'image_name': currentImage
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                statusDiv.textContent = `Training completed successfully!\nModel saved as: ${result.model_path}\nTrained classes: ${result.classes.join(', ')}`;
+            } catch (error) {
+                console.error('Training error:', error);
+                statusDiv.textContent = `Training failed: ${error.message}`;
+            } finally {
+                button.disabled = false;
+            }
+        };
     </script>
 </body>
 </html>
