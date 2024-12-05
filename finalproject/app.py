@@ -1,7 +1,7 @@
 import os
 import torch
 import json
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, send_file
 from PIL import Image
 import cv2
 import numpy as np
@@ -304,6 +304,17 @@ def delete_image():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/download_model/<path:filename>')
+def download_model(filename):
+    try:
+        return send_file(
+            os.path.join(MODELS_FOLDER, filename),
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
+
 @app.route('/train', methods=['POST'])
 def train_model():
     try:
@@ -325,7 +336,7 @@ def train_model():
         
         # 현재 시간으로 모델 이름 생성
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        model_name = f'custom_model_{timestamp}'
+        model_name = f'custom_model_{timestamp}.pt'
         
         # YOLO 모델 학습 설정
         training_model = YOLO('yolov8n.pt')
@@ -340,18 +351,18 @@ def train_model():
             batch=16,
             device='0' if torch.cuda.is_available() else 'cpu',
             project='runs/train',
-            name=model_name,
+            name=model_name.replace('.pt', ''),
             exist_ok=True
         )
         
         # 학습된 모델 파일 경로 찾기
-        model_dir = os.path.join('runs/train', model_name, 'weights')
+        model_dir = os.path.join('runs/train', model_name.replace('.pt', ''), 'weights')
         trained_model = os.path.join(model_dir, 'best.pt')
         if not os.path.exists(trained_model):
             trained_model = os.path.join(model_dir, 'last.pt')
         
         # 모델 파일 이동
-        new_model_path = os.path.join(MODELS_FOLDER, f'{model_name}.pt')
+        new_model_path = os.path.join(MODELS_FOLDER, model_name)
         shutil.copy2(trained_model, new_model_path)
         
         # 글로벌 모델 업데이트
@@ -360,6 +371,7 @@ def train_model():
         return jsonify({
             'message': 'Training completed successfully',
             'model_path': new_model_path,
+            'model_name': model_name,
             'classes': classes
         })
         
@@ -370,4 +382,4 @@ def train_model():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -66,10 +66,58 @@
             padding: 10px;
             display: none;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            color: white;
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .download-btn {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .download-btn:hover {
+            background-color: #2980b9;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <h1>Object Detection and Manual Labeling</h1>
+    
     <form id="uploadForm">
         <input type="file" name="images" accept="image/*" multiple>
         <button type="submit">Upload and Detect</button>
@@ -92,13 +140,23 @@
 
     <div class="bbox-list" id="bboxList">
         <h3>Bounding Boxes:</h3>
-        <!-- 바운딩 박스 목록이 여기에 표시됩니다 -->
     </div>
 
     <div class="tool-panel">
         <h3>Training Tools</h3>
         <button id="startTraining" class="training-btn">Start Training</button>
         <div id="trainingStatus" class="status"></div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">
+                모델 학습 중입니다...<br>
+                <span id="loadingMessage">준비 중...</span>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -375,11 +433,27 @@
 
             const button = this;
             const statusDiv = document.getElementById('trainingStatus');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingMessage = document.getElementById('loadingMessage');
             
             try {
                 button.disabled = true;
+                loadingOverlay.style.display = 'flex';
                 statusDiv.style.display = 'block';
-                statusDiv.textContent = 'Training in progress... This may take several minutes.';
+                
+                // 로딩 메시지 업데이트를 위한 함수
+                let messageIndex = 0;
+                const messages = [
+                    "데이터셋 준비 중...",
+                    "모델 초기화 중...",
+                    "학습 진행 중...",
+                    "모델 최적화 중..."
+                ];
+                
+                const messageInterval = setInterval(() => {
+                    messageIndex = (messageIndex + 1) % messages.length;
+                    loadingMessage.textContent = messages[messageIndex];
+                }, 3000);
                 
                 const response = await fetch('/train', {
                     method: 'POST',
@@ -391,18 +465,30 @@
                     })
                 });
                 
+                clearInterval(messageInterval);
                 const result = await response.json();
                 
                 if (result.error) {
                     throw new Error(result.error);
                 }
                 
-                statusDiv.textContent = `Training completed successfully!\nModel saved as: ${result.model_path}\nTrained classes: ${result.classes.join(', ')}`;
+                // 다운로드 버튼 생성 및 상태 메시지 업데이트
+                statusDiv.innerHTML = `
+                    Training completed successfully!<br>
+                    Trained classes: ${result.classes.join(', ')}<br>
+                    <a href="/download_model/${result.model_name}" 
+                       class="download-btn" 
+                       download="${result.model_name}">
+                        Download Trained Model
+                    </a>
+                `;
+                
             } catch (error) {
                 console.error('Training error:', error);
                 statusDiv.textContent = `Training failed: ${error.message}`;
             } finally {
                 button.disabled = false;
+                loadingOverlay.style.display = 'none';
             }
         };
     </script>
