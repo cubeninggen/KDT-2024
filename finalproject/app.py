@@ -12,13 +12,12 @@ import yaml
 import shutil
 from datetime import datetime
 
-import os
 os.environ['KMP_DUPLICATE_LIB_OK']='TRUE'
 
 app = Flask(__name__)
 
 # YOLO 모델 로드
-model = YOLO('yolov5su.pt')  # YOLOv5 사용
+model = YOLO('yolov5su.pt')
 
 # 결과 저장 폴더 설정
 SAVE_FOLDER = './output'
@@ -31,61 +30,99 @@ MODELS_FOLDER = './models'
 for folder in [SAVE_FOLDER, DATASET_FOLDER, TRAIN_FOLDER, LABELS_FOLDER, MODELS_FOLDER]:
     os.makedirs(folder, exist_ok=True)
 
-print("Training folder contents:", os.listdir(TRAIN_FOLDER))
-print("Labels folder contents:", os.listdir(LABELS_FOLDER))
+class DataAugmentation:
+    def __init__(self):
+        self.augmentations = {
+            'rotation': self._rotate_image,
+            'flip': self._flip_image,
+            'brightness': self._adjust_brightness,
+            'noise': self._add_noise
+        }
 
-def convert_coco_to_yolo(json_data, img_path):
-    """COCO 형식의 어노테이션을 YOLO 형식으로 변환"""
-    img = Image.open(img_path)
-    img_width, img_height = img.size
-    
-    yolo_annotations = []
-    
-    for ann in json_data['annotations']:
-        bbox = ann['bbox']  # [x, y, width, height]
-        class_name = ann['class']
+    def _rotate_image(self, image, boxes):
+        angle = np.random.uniform(-30, 30)
+        height, width = image.shape[:2]
+        center = (width/2, height/2)
         
-        # YOLO 형식으로 변환 (x_center, y_center, width, height)
-        x_center = (bbox[0] + bbox[2]/2) / img_width
-        y_center = (bbox[1] + bbox[3]/2) / img_height
-        width = bbox[2] / img_width
-        height = bbox[3] / img_height
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated_image = cv2.warpAffine(image, M, (width, height))
         
-        yolo_annotations.append(f"{class_name} {x_center} {y_center} {width} {height}")
-    
-    return yolo_annotations
+        rotated_boxes = []
+        for box in boxes:
+            x, y, w, h = box['bbox']
+            points = np.array([
+                [x, y],
+                [x + w, y],
+                [x, y + h],
+                [x + w, y + h]
+            ])
+            
+            ones = np.ones(shape=(len(points), 1))
+            points_ones = np.hstack([points, ones])
+            transformed_points = M.dot(points_ones.T).T
+            
+            x_min = np.clip(np.min(transformed_points[:, 0]), 0, width)
+            y_min = np.clip(np.min(transformed_points[:, 1]), 0, height)
+            x_max = np.clip(np.max(transformed_points[:, 0]), 0, width)
+            y_max = np.clip(np.max(transformed_points[:, 1]), 0, height)
+            
+            rotated_box = box.copy()
+            rotated_box['bbox'] = [x_min, y_min, x_max - x_min, y_max - y_min]
+            rotated_boxes.append(rotated_box)
+            
+        return rotated_image, rotated_boxes
 
-def create_yaml_config(classes):
-    """YOLO 학습을 위한 YAML 설정 파일 생성"""
-    yaml_path = os.path.join(DATASET_FOLDER, 'dataset.yaml')
-    
-    # 경로를 올바르게 설정 (윈도우 경로 이슈 해결)
-    dataset_path = os.path.abspath(DATASET_FOLDER).replace('\\', '/')
-    train_path = os.path.join(dataset_path, 'images/train').replace('\\', '/')
-    
-    config = {
-        'path': dataset_path,  # 메인 데이터셋 경로
-        'train': 'images/train',  # 상대 경로 사용
-        'val': 'images/train',    # 상대 경로 사용
-        'nc': len(classes),       # 클래스 수
-        'names': classes          # 클래스 이름 리스트
-    }
-    
-    print("Creating YAML with config:", config)  # 디버깅용
-    
-    with open(yaml_path, 'w') as f:
-        yaml.dump(config, f, sort_keys=False)
-    
-    return yaml_path
+    def _flip_image(self, image, boxes):
+        flipped_image = cv2.flip(image, 1)
+        width = image.shape[1]
+        
+        flipped_boxes = []
+        for box in boxes:
+            x, y, w, h = box['bbox']
+            new_x = width - (x + w)
+            flipped_box = box.copy()
+            flipped_box['bbox'] = [new_x, y, w, h]
+            flipped_boxes.append(flipped_box)
+            
+        return flipped_image, flipped_boxes
 
-def prepare_training_data():
-    """학습 데이터 준비"""
-    print("Starting prepare_training_data")  # 디버깅용
-    
+    def _adjust_brightness(self, image, boxes):
+        value = np.random.uniform(0.7, 1.3)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv = hsv.astype(np.float32)
+        hsv[:,:,2] = np.clip(hsv[:,:,2] * value, 0, 255)
+        hsv = hsv.astype(np.uint8)
+        adjusted_image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        return adjusted_image, boxes
+
+    def _add_noise(self, image, boxes):
+        row, col, ch = image.shape
+        mean = 0
+        sigma = 25
+        gauss = np.random.normal(mean, sigma, (row, col, ch))
+        noisy_image = image + gauss
+        noisy_image = np.clip(noisy_image, 0, 255).astype(np.uint8)
+        return noisy_image, boxes
+
+    def apply_augmentations(self, image, boxes, selected_augmentations):
+        augmented_images = []
+        augmented_boxes = []
+        
+        augmented_images.append(image)
+        augmented_boxes.append(boxes)
+        
+        for aug_name in selected_augmentations:
+            if aug_name in self.augmentations:
+                aug_image, aug_boxes = self.augmentations[aug_name](image.copy(), boxes)
+                augmented_images.append(aug_image)
+                augmented_boxes.append(aug_boxes)
+        
+        return augmented_images, augmented_boxes
+
+def prepare_training_data(selected_augmentations=[]):
+    augmenter = DataAugmentation()
     json_files = list(Path(SAVE_FOLDER).glob('*_coco.json'))
-    print(f"Found {len(json_files)} JSON files")  # 디버깅용
     
-    # 디렉토리 재생성
     train_img_dir = os.path.join(DATASET_FOLDER, 'images/train')
     train_label_dir = os.path.join(DATASET_FOLDER, 'labels/train')
     
@@ -98,50 +135,49 @@ def prepare_training_data():
     processed_images = 0
     
     for json_file in json_files:
-        print(f"Processing {json_file}")  # 디버깅용
         with open(json_file, 'r') as f:
             data = json.load(f)
-        
-        # 이미지 파일 복사
+            
         image_name = data['images'][0]['file_name']
         src_image = os.path.join(SAVE_FOLDER, image_name)
+        
         if os.path.exists(src_image):
-            dst_image = os.path.join(train_img_dir, image_name)
-            shutil.copy2(src_image, dst_image)
-            print(f"Copied image to {dst_image}")  # 디버깅용
+            image = cv2.imread(src_image)
+            boxes = [{'bbox': ann['bbox'], 'class': ann['class']} 
+                    for ann in data['annotations']]
             
-            # YOLO 형식으로 레이블 변환
-            img_width = float(data['images'][0]['width'])
-            img_height = float(data['images'][0]['height'])
+            augmented_images, augmented_boxes = augmenter.apply_augmentations(
+                image, boxes, selected_augmentations)
             
-            label_name = Path(image_name).stem + '.txt'
-            label_path = os.path.join(train_label_dir, label_name)
-            
-            with open(label_path, 'w') as f:
-                for ann in data['annotations']:
-                    class_name = ann['class']
-                    if class_name not in classes:
-                        classes.append(class_name)
-                    
-                    class_id = classes.index(class_name)
-                    bbox = ann['bbox']  # [x, y, width, height]
-                    x_center = (bbox[0] + bbox[2]/2) / img_width
-                    y_center = (bbox[1] + bbox[3]/2) / img_height
-                    width = bbox[2] / img_width
-                    height = bbox[3] / img_height
-                    
-                    f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
-            print(f"Created label file {label_path}")  # 디버깅용
-            processed_images += 1
-        else:
-            print(f"Warning: Image {src_image} not found")  # 디버깅용
-    
-    print(f"Processed {processed_images} images with classes: {classes}")  # 디버깅용
-    
-    # 데이터셋 구조 확인
-    print("Dataset structure:")
-    print(f"Train images: {os.listdir(train_img_dir)}")
-    print(f"Train labels: {os.listdir(train_label_dir)}")
+            for idx, (aug_image, aug_boxes) in enumerate(zip(augmented_images, augmented_boxes)):
+                suffix = f"_aug_{idx}" if idx > 0 else ""
+                aug_image_name = f"{Path(image_name).stem}{suffix}{Path(image_name).suffix}"
+                
+                dst_image = os.path.join(train_img_dir, aug_image_name)
+                cv2.imwrite(dst_image, aug_image)
+                
+                label_name = f"{Path(aug_image_name).stem}.txt"
+                label_path = os.path.join(train_label_dir, label_name)
+                
+                img_height, img_width = aug_image.shape[:2]
+                
+                with open(label_path, 'w') as f:
+                    for box in aug_boxes:
+                        class_name = box['class']
+                        if class_name not in classes:
+                            classes.append(class_name)
+                        
+                        class_id = classes.index(class_name)
+                        bbox = box['bbox']
+                        
+                        x_center = (bbox[0] + bbox[2]/2) / img_width
+                        y_center = (bbox[1] + bbox[3]/2) / img_height
+                        width = bbox[2] / img_width
+                        height = bbox[3] / img_height
+                        
+                        f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
+                
+                processed_images += 1
     
     return classes
 
@@ -159,30 +195,22 @@ def upload_image():
         return jsonify({'error': 'No selected file'}), 400
 
     try:
-        # 파일명에서 특수문자 제거 및 안전한 파일명 생성
         safe_filename = secure_filename(file.filename)
         original_path = os.path.join(SAVE_FOLDER, safe_filename)
         file.save(original_path)
 
-        # 이미지 읽기
         img = cv2.imread(original_path)
-        
-        # YOLO 객체 탐지 실행
         results = model.predict(source=img, save=False)[0]
         
-        # 결과 이미지 이름 설정
         detect_image_name = f'result_{safe_filename}'
         detect_path = os.path.join(SAVE_FOLDER, detect_image_name)
         
-        # 결과 이미지에 바운딩 박스 그리기
         plot_image = results.plot()
         cv2.imwrite(detect_path, plot_image)
 
-        # JSON 결과 저장
         json_filename = f"{os.path.splitext(safe_filename)[0]}_detections.json"
         json_path = os.path.join(SAVE_FOLDER, json_filename)
         
-        # 탐지 결과를 JSON으로 변환
         detections = []
         for box in results.boxes:
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
@@ -226,7 +254,6 @@ def save_labels():
         image_name = data['image_name']
         bboxes = data['bboxes']
         
-        # COCO 형식으로 저장
         coco_annotations = {
             "images": [{
                 "id": 1,
@@ -237,14 +264,12 @@ def save_labels():
             "annotations": []
         }
         
-        # 이미지 크기 가져오기
         img_path = os.path.join(SAVE_FOLDER, image_name)
         img = Image.open(img_path)
         img_width, img_height = img.size
         coco_annotations["images"][0]["width"] = img_width
         coco_annotations["images"][0]["height"] = img_height
         
-        # 바운딩 박스를 COCO 형식으로 변환
         for i, bbox in enumerate(bboxes):
             x_center = bbox['x_center'] * img_width
             y_center = bbox['y_center'] * img_height
@@ -263,7 +288,6 @@ def save_labels():
                 "iscrowd": 0
             })
         
-        # COCO JSON 저장
         json_path = os.path.join(SAVE_FOLDER, f"{os.path.splitext(image_name)[0]}_coco.json")
         with open(json_path, 'w') as f:
             json.dump(coco_annotations, f, indent=4)
@@ -285,7 +309,6 @@ def delete_image():
         if not filename:
             return jsonify({'error': 'No filename provided'}), 400
 
-        # 관련된 모든 파일 삭제
         base_name = os.path.splitext(filename)[0]
         files_to_delete = [
             filename,
@@ -304,46 +327,39 @@ def delete_image():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download_model/<path:filename>')
-def download_model(filename):
-    try:
-        return send_file(
-            os.path.join(MODELS_FOLDER, filename),
-            as_attachment=True,
-            download_name=filename
-        )
-    except Exception as e:
-        return jsonify({'error': str(e)}), 404
-
 @app.route('/train', methods=['POST'])
 def train_model():
     try:
         global model
+        data = request.json
+        selected_augmentations = data.get('augmentations', [])
         
-        # 학습 데이터 준비
-        classes = prepare_training_data()
+        classes = prepare_training_data(selected_augmentations)
         if not classes:
             return jsonify({'error': 'No classes found in the dataset'}), 400
         
-        yaml_path = create_yaml_config(classes)
+        yaml_path = os.path.join(DATASET_FOLDER, 'dataset.yaml')
+        config = {
+            'path': os.path.abspath(DATASET_FOLDER).replace('\\', '/'),
+            'train': 'images/train',
+            'val': 'images/train',
+            'nc': len(classes),
+            'names': classes
+        }
+        with open(yaml_path, 'w') as f:
+            yaml.dump(config, f, sort_keys=False)
         
-        # 학습 데이터 존재 확인
         train_img_dir = os.path.join(DATASET_FOLDER, 'images/train')
         train_label_dir = os.path.join(DATASET_FOLDER, 'labels/train')
         
         if not os.listdir(train_img_dir) or not os.listdir(train_label_dir):
             return jsonify({'error': 'No training data found'}), 400
         
-        # 현재 시간으로 모델 이름 생성
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         model_name = f'custom_model_{timestamp}.pt'
         
-        # YOLO 모델 학습 설정
         training_model = YOLO('yolov8n.pt')
         
-        print(f"Starting training with YAML config at {yaml_path}")
-        
-        # 학습 실행
         results = training_model.train(
             data=yaml_path,
             epochs=50,
@@ -355,17 +371,14 @@ def train_model():
             exist_ok=True
         )
         
-        # 학습된 모델 파일 경로 찾기
         model_dir = os.path.join('runs/train', model_name.replace('.pt', ''), 'weights')
         trained_model = os.path.join(model_dir, 'best.pt')
         if not os.path.exists(trained_model):
             trained_model = os.path.join(model_dir, 'last.pt')
         
-        # 모델 파일 이동
         new_model_path = os.path.join(MODELS_FOLDER, model_name)
         shutil.copy2(trained_model, new_model_path)
         
-        # 글로벌 모델 업데이트
         model = YOLO(new_model_path)
         
         return jsonify({
@@ -382,4 +395,5 @@ def train_model():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(port=5000)
+    

@@ -3,69 +3,155 @@
 <head>
     <title>YOLO Object Detection and Labeling</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            max-height: calc(100vh - 150px);
+        }
+
+        .sidebar {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .content-area {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .image-preview {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .image-preview h3 {
+            margin: 10px 0;
+            color: #333;
+            text-align: center;
+        }
+
         .canvas-container {
             position: relative;
-            display: inline-block;
+            width: 100%;
         }
+
         #labelCanvas {
             position: absolute;
             top: 0;
             left: 0;
             cursor: crosshair;
         }
+
         .tool-panel {
-            margin: 20px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background: #f5f5f5;
-        }
-        .bbox-list {
-            margin: 20px 0;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .bbox-item {
-            margin: 5px 0;
-            padding: 5px;
-            border: 1px solid #ddd;
             background: #fff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .image-preview {
+
+        .augmentation-controls {
             margin: 10px 0;
             padding: 10px;
-            border: 1px solid #ddd;
+            background: #f8f9fa;
+            border-radius: 4px;
         }
-        .delete-btn {
-            color: red;
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             cursor: pointer;
-            margin-left: 10px;
         }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
         .image-container {
-            margin: 20px 0;
             padding: 10px;
-            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .training-btn {
-            background-color: #4CAF50;
+
+        button {
+            background: #4CAF50;
             color: white;
-            padding: 10px 20px;
             border: none;
+            padding: 8px 12px;
             border-radius: 4px;
             cursor: pointer;
-            margin: 10px 0;
+            margin: 5px;
         }
-        .training-btn:hover {
-            background-color: #45a049;
+
+        button:hover {
+            background: #45a049;
         }
-        .training-btn:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
+
+        .delete-btn {
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
         }
-        .status {
-            margin-top: 10px;
-            padding: 10px;
-            display: none;
+
+        .delete-btn:hover {
+            color: #cc0000;
         }
+
+        .bbox-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .bbox-item {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -78,6 +164,7 @@
             align-items: center;
             z-index: 1000;
         }
+
         .loading-spinner {
             width: 50px;
             height: 50px;
@@ -86,32 +173,35 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .loading-text {
             color: white;
             margin-top: 20px;
             font-size: 18px;
             text-align: center;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+
         .download-btn {
             background-color: #3498db;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 10px 0;
             text-decoration: none;
             display: inline-block;
         }
+
         .download-btn:hover {
             background-color: #2980b9;
         }
-        .hidden {
-            display: none;
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+
+        h1 {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -123,32 +213,56 @@
         <button type="submit">Upload and Detect</button>
     </form>
 
-    <div id="imagesList">
-        <!-- 업로드된 이미지들이 여기에 표시됩니다 -->
+    <div class="main-container">
+        <div class="sidebar">
+            <div id="imagesList">
+                <!-- 업로드된 이미지들이 여기에 표시됩니다 -->
+            </div>
+
+            <div class="tool-panel">
+                <h3>Labeling Tools</h3>
+                <input type="text" id="classSelect" placeholder="Enter class name">
+                <button id="saveLabels">Save Labels</button>
+                <button id="undoLabel">Undo Last Label</button>
+            </div>
+
+            <div class="tool-panel">
+                <h3>Training Tools</h3>
+                <div class="augmentation-controls">
+                    <h4>Data Augmentation:</h4>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="rotationAug" name="augmentation" value="rotation">
+                            Rotation (±30°)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="flipAug" name="augmentation" value="flip">
+                            Horizontal Flip
+                        </label>
+                        <label>
+                            <input type="checkbox" id="brightnessAug" name="augmentation" value="brightness">
+                            Brightness (±30%)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="noiseAug" name="augmentation" value="noise">
+                            Noise
+                        </label>
+                    </div>
+                </div>
+                <button id="startTraining" class="training-btn">Start Training</button>
+                <div id="trainingStatus" class="status"></div>
+            </div>
+
+            <div class="bbox-list" id="bboxList">
+                <h3>Bounding Boxes:</h3>
+            </div>
+        </div>
+
+        <div class="content-area" id="results">
+            <!-- 선택된 이미지의 결과가 여기에 표시됩니다 -->
+        </div>
     </div>
 
-    <div id="results">
-        <!-- 선택된 이미지의 결과가 여기에 표시됩니다 -->
-    </div>
-
-    <div class="tool-panel">
-        <h3>Labeling Tools</h3>
-        <input type="text" id="classSelect">
-        <button id="saveLabels">Save Labels</button>
-        <button id="undoLabel">Undo Last Label</button>
-    </div>
-
-    <div class="bbox-list" id="bboxList">
-        <h3>Bounding Boxes:</h3>
-    </div>
-
-    <div class="tool-panel">
-        <h3>Training Tools</h3>
-        <button id="startTraining" class="training-btn">Start Training</button>
-        <div id="trainingStatus" class="status"></div>
-    </div>
-
-    <!-- 로딩 오버레이 -->
     <div class="loading-overlay" id="loadingOverlay">
         <div style="text-align: center;">
             <div class="loading-spinner"></div>
@@ -228,13 +342,15 @@
             currentImage = img.name;
             
             document.getElementById('results').innerHTML = `
-                <div id="originalImage">
-                    <img src="${img.originalPath}" style="max-width:1000px">
-                    <h3>[Original Image]</h3>
+                <div id="originalImage" class="image-preview">
+                    <img src="${img.originalPath}">
+                    <h3>Original Image</h3>
                 </div>
-                <div id="detectedImage" class="canvas-container">
-                    <img src="${img.resultPath}" style="max-width:1000px">
-                    <h3>[Detected Objects]</h3>
+                <div id="detectedImage" class="image-preview">
+                    <div class="canvas-container">
+                        <img src="${img.resultPath}">
+                        <h3>Detected Objects</h3>
+                    </div>
                 </div>
             `;
 
@@ -436,15 +552,21 @@
             const loadingOverlay = document.getElementById('loadingOverlay');
             const loadingMessage = document.getElementById('loadingMessage');
             
+            // 선택된 증강 기법 수집
+            const selectedAugmentations = [];
+            document.querySelectorAll('input[name="augmentation"]:checked').forEach(checkbox => {
+                selectedAugmentations.push(checkbox.value);
+            });
+            
             try {
                 button.disabled = true;
                 loadingOverlay.style.display = 'flex';
                 statusDiv.style.display = 'block';
                 
-                // 로딩 메시지 업데이트를 위한 함수
                 let messageIndex = 0;
                 const messages = [
                     "데이터셋 준비 중...",
+                    "증강 데이터 생성 중...",
                     "모델 초기화 중...",
                     "학습 진행 중...",
                     "모델 최적화 중..."
@@ -461,7 +583,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        'image_name': currentImage
+                        'image_name': currentImage,
+                        'augmentations': selectedAugmentations
                     })
                 });
                 
@@ -472,10 +595,10 @@
                     throw new Error(result.error);
                 }
                 
-                // 다운로드 버튼 생성 및 상태 메시지 업데이트
                 statusDiv.innerHTML = `
                     Training completed successfully!<br>
                     Trained classes: ${result.classes.join(', ')}<br>
+                    Applied augmentations: ${selectedAugmentations.join(', ') || 'None'}<br>
                     <a href="/download_model/${result.model_name}" 
                        class="download-btn" 
                        download="${result.model_name}">
