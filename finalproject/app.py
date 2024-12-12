@@ -18,15 +18,20 @@ os.environ['KMP_DUPLICATE_LIB_OK']='TRUE'
 
 app = Flask(__name__)
 
-# YOLO 모델 로드
-model = YOLO('yolov5su.pt')
-
-# 결과 저장 폴더 설정
-SAVE_FOLDER = './output'
-DATASET_FOLDER = './dataset'
+# 절대 경로로 폴더 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SAVE_FOLDER = os.path.join(BASE_DIR, 'output')
+DATASET_FOLDER = os.path.join(BASE_DIR, 'dataset')
 TRAIN_FOLDER = os.path.join(DATASET_FOLDER, 'images/train')
 LABELS_FOLDER = os.path.join(DATASET_FOLDER, 'labels/train')
-MODELS_FOLDER = './models'
+MODELS_FOLDER = os.path.join(BASE_DIR, 'models')
+
+# 설정
+app.config['UPLOAD_FOLDER'] = SAVE_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
+
+# YOLO 모델 로드
+model = YOLO('yolov5su.pt')
 
 # 필요한 디렉토리 생성
 for folder in [SAVE_FOLDER, DATASET_FOLDER, TRAIN_FOLDER, LABELS_FOLDER, MODELS_FOLDER]:
@@ -113,6 +118,7 @@ class TrainingCallback:
                 "training_complete": True
             }
             training_updates.put(json.dumps(update))
+
 class DataAugmentation:
     def __init__(self):
         self.augmentations = {
@@ -252,6 +258,7 @@ def prepare_training_data(selected_augmentations=[]):
                         f.write(f"{class_idx} {x_center} {y_center} {box_width} {box_height}\n")
     
     return sorted(list(classes))
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -269,6 +276,15 @@ def stream():
     return Response(stream_with_context(generate()), 
                    mimetype='text/event-stream')
 
+@app.route('/get_models')
+def get_models():
+    """학습된 모델 목록을 반환합니다."""
+    try:
+        models = [f for f in os.listdir(MODELS_FOLDER) if f.endswith('.pt')]
+        return jsonify(models)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/upload', methods=['POST'])
 def upload_image():
     if 'image' not in request.files:
@@ -279,14 +295,22 @@ def upload_image():
         return jsonify({'error': 'No selected file'}), 400
 
     try:
+        # 파일명 안전하게 저장
         filename = secure_filename(file.filename)
-        filepath = os.path.join(SAVE_FOLDER, filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # 원본 이미지 저장
         file.save(filepath)
 
+        # YOLO로 객체 감지
         results = model(filepath)[0]
-        result_path = os.path.join(SAVE_FOLDER, f'result_{filename}')
+        result_filename = f'result_{filename}'
+        result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
+        
+        # 결과 이미지 저장
         results.save(result_path)
 
+        # 감지된 객체 정보 수집
         detections = []
         for box in results.boxes:
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
@@ -301,24 +325,85 @@ def upload_image():
             }
             detections.append(detection)
 
-        json_path = os.path.join(SAVE_FOLDER, f'{Path(filename).stem}_detections.json')
-        with open(json_path, 'w') as f:
-            json.dump(detections, f, indent=4)
+        # 감지 결과 JSON 저장
+        json_filename = f'{os.path.splitext(filename)[0]}_detections.json'
+        json_path = os.path.join(app.config['UPLOAD_FOLDER'], json_filename)
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(detections, f, indent=4, ensure_ascii=False)
 
         return jsonify({
             'original_image': f'/output/{filename}',
-            'result_image': f'/output/result_{filename}',
-            'json_file': f'/output/{Path(filename).stem}_detections.json',
+            'result_image': f'/output/{result_filename}',
+            'json_file': f'/output/{json_filename}',
             'message': 'Processing completed successfully'
         })
 
     except Exception as e:
         print(f"Error processing image: {str(e)}")
+        import traceback
+        traceback.print_exc()  # 상세한 에러 정보 출력
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/detect', methods=['POST'])
+def detect_objects():
+    """선택된 모델로 객체를 감지합니다."""
+    try:
+        data = request.json
+        image_name = data['image_name']
+        model_type = data['model_type']
+        
+        # 이미지 경로
+        image_path = os.path.join(SAVE_FOLDER, image_name)
+        
+        # 모델 선택
+        detection_model = model  # 기본 모델
+        if model_type != 'default':
+            model_path = os.path.join(MODELS_FOLDER, model_type)
+            if os.path.exists(model_path):
+                detection_model = YOLO(model_path)
+            else:
+                return jsonify({'error': 'Selected model not found'}), 404
+        
+        # 객체 감지 수행
+        results = detection_model(image_path)[0]
+        
+        # 결과 이미지 저장
+        result_path = os.path.join(SAVE_FOLDER, f'result_{image_name}')
+        results.save(result_path)
+        
+        # 감지된 객체 정보 수집
+        detections = []
+        for box in results.boxes:
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+            conf = float(box.conf[0].cpu().numpy())
+            cls = int(box.cls[0].cpu().numpy())
+            name = results.names[cls]
+            
+            detection = {
+                "class": name,
+                "confidence": conf,
+                "bbox": [float(x1), float(y1), float(x2-x1), float(y2-y1)]
+            }
+            detections.append(detection)
+        
+        # 감지 결과 JSON 저장
+        json_path = os.path.join(SAVE_FOLDER, f'{Path(image_name).stem}_detections.json')
+        with open(json_path, 'w') as f:
+            json.dump(detections, f, indent=4)
+        
+        return jsonify({
+            'result_image': f'/output/result_{image_name}',
+            'detections': detections,
+            'message': 'Detection completed successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error during detection: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/output/<path:filename>')
 def output_files(filename):
-    return send_from_directory(SAVE_FOLDER, filename)
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/training_results/<path:filename>')
 def training_results(filename):
